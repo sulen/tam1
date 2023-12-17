@@ -1,8 +1,10 @@
 package com.knowakowski.tam1
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,17 +32,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.knowakowski.tam1.ui.theme.Tam1Theme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.foundation.lazy.items
 
 class MainActivity : ComponentActivity() {
+    private val viewModel: MainViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        viewModel.getData()
+
+        Log.d("Main", "test2")
         setContent {
             Tam1Theme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    WeatherScreen()
+                    Showcase(viewModel = viewModel)
                 }
             }
         }
@@ -110,5 +121,28 @@ fun WeatherScreen() {
         iconResource = R.drawable.sunny
     )
 
-    WeatherCard(weatherInfo = weatherInfo)
+
+}
+
+@Composable
+fun Showcase(viewModel: MainViewModel, modifier: Modifier = Modifier) {
+    val weatherList by viewModel.immutableWeatherData.observeAsState(emptyList())
+
+    if (weatherList.isNotEmpty()) {
+        weatherList.forEachIndexed { index, weather ->
+            Log.d("Main", "$index ${weather.name}, ${weather.weather[0].description}")
+        }
+        LazyColumn {
+            items(weatherList) { weather ->
+                WeatherCard(
+                    weatherInfo = WeatherInfo(
+                        city = weather.name,
+                        temperature = weather.main.temp,
+                        weatherDescription = weather.weather[0].main,
+                        iconResource = R.drawable.sunny
+                    )
+                )
+            }
+        }
+    }
 }
