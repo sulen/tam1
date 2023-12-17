@@ -14,19 +14,20 @@ class MainViewModel : ViewModel() {
 
     private val weatherRepository = WeatherRepository()
 
-    private val mutableWeatherData = MutableLiveData<List<CurrentWeather>>()
-    val immutableWeatherData: LiveData<List<CurrentWeather>> = mutableWeatherData
+    private val mutableWeatherData = MutableLiveData<UiState<List<CurrentWeather>>>()
+    val immutableWeatherData: LiveData<UiState<List<CurrentWeather>>> = mutableWeatherData
 
     fun getData() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                mutableWeatherData.postValue(UiState(isLoading = true))
                 val request = weatherRepository.getCurrentWeather()
-                Log.e("MainViewModel", "Response $request", )
                 val weather = request.body()?.list ?: emptyList()
-                mutableWeatherData.postValue(weather)
 
+                mutableWeatherData.postValue(UiState(data = weather))
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Operacja nie powiodla sie", e)
+                mutableWeatherData.postValue(UiState(error = e.message))
             }
         }
     }

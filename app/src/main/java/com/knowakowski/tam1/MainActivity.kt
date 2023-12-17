@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,26 +16,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.knowakowski.tam1.repository.model.CurrentWeather
 import com.knowakowski.tam1.ui.theme.Tam1Theme
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.foundation.lazy.items
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
@@ -50,7 +52,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Showcase(viewModel = viewModel)
+                    MainView(viewModel = viewModel)
                 }
             }
         }
@@ -61,7 +63,7 @@ data class WeatherInfo(
     val city: String,
     val temperature: Double,
     val weatherDescription: String,
-    val iconResource: Int
+    val iconId: String,
 )
 
 @Composable
@@ -82,13 +84,13 @@ fun WeatherCard(weatherInfo: WeatherInfo) {
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = ImageVector.vectorResource(id = weatherInfo.iconResource),
-                contentDescription = "Weather Icon",
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onSurface
-            )
 
+            AsyncImage(
+                modifier = Modifier.size(64.dp),
+                model = "https://openweathermap.org/img/w/${weatherInfo.iconId}.png",
+                contentDescription = "Weather Icon",
+                placeholder = painterResource(R.drawable.ic_launcher_foreground),
+            )
 
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -111,23 +113,44 @@ fun WeatherCard(weatherInfo: WeatherInfo) {
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun WeatherScreen() {
-    val weatherInfo = WeatherInfo(
-        city = "Kraków",
-        temperature = 21.1,
-        weatherDescription = "Słonecznie",
-        iconResource = R.drawable.sunny
-    )
+fun MainView(viewModel: MainViewModel) {
+    val uiState by viewModel.immutableWeatherData.observeAsState(UiState())
 
+    when {
+        uiState.isLoading -> {
+            MyLoadingView()
+        }
 
+        uiState.error != null -> {
+            MyErrorView(uiState.error!!)
+        }
+
+        uiState.data != null -> {
+            uiState.data?.let { MyListView(weatherList = it) }
+        }
+    }
 }
 
 @Composable
-fun Showcase(viewModel: MainViewModel, modifier: Modifier = Modifier) {
-    val weatherList by viewModel.immutableWeatherData.observeAsState(emptyList())
+fun MyErrorView(error: String) {
+    Snackbar {
+        Text(text = error)
+    }
+}
 
+@Composable
+fun MyLoadingView() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+@Composable
+fun MyListView(weatherList: List<CurrentWeather>) {
     if (weatherList.isNotEmpty()) {
         weatherList.forEachIndexed { index, weather ->
             Log.d("Main", "$index ${weather.name}, ${weather.weather[0].description}")
@@ -139,7 +162,7 @@ fun Showcase(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                         city = weather.name,
                         temperature = weather.main.temp,
                         weatherDescription = weather.weather[0].main,
-                        iconResource = R.drawable.sunny
+                        iconId = weather.weather[0].icon
                     )
                 )
             }
