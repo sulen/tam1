@@ -17,6 +17,9 @@ class MainViewModel : ViewModel() {
     private val mutableWeatherData = MutableLiveData<UiState<List<CurrentWeather>>>()
     val immutableWeatherData: LiveData<UiState<List<CurrentWeather>>> = mutableWeatherData
 
+    private val mutableSingleCityWeatherData = MutableLiveData<UiState<CurrentWeather>>()
+    val immutableSingleCityWeatherData: LiveData<UiState<CurrentWeather>> = mutableSingleCityWeatherData
+
     fun getData() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -28,6 +31,25 @@ class MainViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Operacja nie powiodla sie", e)
                 mutableWeatherData.postValue(UiState(error = e.message))
+            }
+        }
+    }
+
+    fun getDataForCity(city: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                mutableSingleCityWeatherData.postValue(UiState(isLoading = true))
+                val request = weatherRepository.getCurrentWeatherForCity(city)
+                val weather = request.body()
+
+                if (weather != null) {
+                    mutableSingleCityWeatherData.postValue(UiState(data = weather))
+                } else {
+                    mutableSingleCityWeatherData.postValue(UiState(error = "Brak danych"))
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Operacja nie powiodla sie", e)
+                mutableSingleCityWeatherData.postValue(UiState(error = e.message))
             }
         }
     }

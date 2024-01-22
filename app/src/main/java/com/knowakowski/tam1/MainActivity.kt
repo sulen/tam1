@@ -1,11 +1,13 @@
 package com.knowakowski.tam1
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +37,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.knowakowski.tam1.repository.DetailsActivity
 import com.knowakowski.tam1.repository.model.CurrentWeather
 import com.knowakowski.tam1.ui.theme.Tam1Theme
 
@@ -45,17 +48,25 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         viewModel.getData()
 
-        Log.d("Main", "test2")
         setContent {
             Tam1Theme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainView(viewModel = viewModel)
+                    MainView(
+                        viewModel = viewModel,
+                        onClick = { city -> navigateToDetails(city) }
+                    )
                 }
             }
         }
+    }
+
+    private fun navigateToDetails(city: String) {
+        val intent = Intent(this, DetailsActivity::class.java)
+        intent.putExtra("CITY", city)
+        startActivity(intent)
     }
 }
 
@@ -64,19 +75,21 @@ data class WeatherInfo(
     val temperature: Double,
     val weatherDescription: String,
     val iconId: String,
+    val id: String,
 )
 
 @Composable
-fun WeatherCard(weatherInfo: WeatherInfo) {
+fun WeatherCard(weatherInfo: WeatherInfo, onClick: (String) -> Unit) {
     Card(
         modifier = Modifier
             .padding(16.dp)
             .fillMaxWidth()
-            .border(1.dp, Color.LightGray, shape = MaterialTheme.shapes.medium),
+            .border(1.dp, Color.LightGray, shape = MaterialTheme.shapes.medium)
+            .clickable { onClick.invoke(weatherInfo.city) },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        ),
     ) {
         Row(
             modifier = Modifier
@@ -114,7 +127,7 @@ fun WeatherCard(weatherInfo: WeatherInfo) {
 }
 
 @Composable
-fun MainView(viewModel: MainViewModel) {
+fun MainView(viewModel: MainViewModel, onClick: (String) -> Unit) {
     val uiState by viewModel.immutableWeatherData.observeAsState(UiState())
 
     when {
@@ -127,7 +140,7 @@ fun MainView(viewModel: MainViewModel) {
         }
 
         uiState.data != null -> {
-            uiState.data?.let { MyListView(weatherList = it) }
+            uiState.data?.let { MyListView(weatherList = it, onClick = onClick) }
         }
     }
 }
@@ -150,7 +163,7 @@ fun MyLoadingView() {
 }
 
 @Composable
-fun MyListView(weatherList: List<CurrentWeather>) {
+fun MyListView(weatherList: List<CurrentWeather>, onClick: (String) -> Unit) {
     if (weatherList.isNotEmpty()) {
         weatherList.forEachIndexed { index, weather ->
             Log.d("Main", "$index ${weather.name}, ${weather.weather[0].description}")
@@ -162,8 +175,10 @@ fun MyListView(weatherList: List<CurrentWeather>) {
                         city = weather.name,
                         temperature = weather.main.temp,
                         weatherDescription = weather.weather[0].main,
-                        iconId = weather.weather[0].icon
-                    )
+                        iconId = weather.weather[0].icon,
+                        id = weather.id.toString(),
+                    ),
+                    onClick = { city -> onClick.invoke(city) }
                 )
             }
         }
